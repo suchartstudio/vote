@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - ตั้งค่าการเลือกตั้ง</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
+        <h1 class="text-2xl font-bold mb-4">ตั้งค่าระบบการเลือกตั้ง</h1>
+        
+        <!-- ตั้งค่าเงื่อนไข -->
+        <h2 class="text-xl font-semibold mb-2 mt-4">1. ข้อมูลการเลือกตั้งและพื้นที่</h2>
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <input id="elName" type="text" placeholder="ชื่อการเลือกตั้ง" class="border p-2 rounded">
+            <input id="elRadius" type="number" placeholder="รัศมีที่อนุญาต (เมตร)" class="border p-2 rounded">
+            <input id="elLat" type="number" placeholder="ละติจูด (Latitude)" class="border p-2 rounded">
+            <input id="elLng" type="number" placeholder="ลองจิจูด (Longitude)" class="border p-2 rounded">
+            <input id="elStart" type="datetime-local" class="border p-2 rounded">
+            <input id="elEnd" type="datetime-local" class="border p-2 rounded">
+        </div>
+        <button id="saveConfig" class="bg-blue-600 text-white px-4 py-2 rounded">บันทึกการตั้งค่า</button>
+
+        <!-- เพิ่มผู้สมัคร -->
+        <h2 class="text-xl font-semibold mb-2 mt-8">2. เพิ่มผู้สมัคร</h2>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <input id="cName" type="text" placeholder="ชื่อผู้สมัคร" class="border p-2 rounded">
+            <input id="cPhoto" type="url" placeholder="URL รูปถ่าย" class="border p-2 rounded">
+            <textarea id="cDetails" placeholder="รายละเอียด/นโยบาย" class="border p-2 rounded col-span-2"></textarea>
+        </div>
+        <button id="addCandidate" class="bg-green-600 text-white px-4 py-2 rounded">เพิ่มผู้สมัคร</button>
+    </div>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { ref, set, push } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        document.getElementById('saveConfig').onclick = () => {
+            set(ref(db, 'settings'), {
+                name: document.getElementById('elName').value,
+                radius: Number(document.getElementById('elRadius').value),
+                lat: Number(document.getElementById('elLat').value),
+                lng: Number(document.getElementById('elLng').value),
+                start: document.getElementById('elStart').value,
+                end: document.getElementById('elEnd').value
+            }).then(() => alert('บันทึกการตั้งค่าแล้ว'));
+        };
+
+        document.getElementById('addCandidate').onclick = () => {
+            const candidatesRef = ref(db, 'candidates');
+            const newCandidateRef = push(candidatesRef);
+            set(newCandidateRef, {
+                name: document.getElementById('cName').value,
+                photo: document.getElementById('cPhoto').value,
+                details: document.getElementById('cDetails').value,
+                number: 0, // จะถูกสุ่มทีหลัง
+                votes: 0
+            }).then(() => {
+                alert('เพิ่มผู้สมัครสำเร็จ');
+                document.getElementById('cName').value = '';
+                document.getElementById('cDetails').value = '';
+            });
+        };
+    </script>
+</body>
+</html>

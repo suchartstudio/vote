@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ผลการลงคะแนน Real-Time</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- ออกแบบเป็น Desktop First (กว้างสุดที่ max-w-5xl) -->
+    <div class="max-w-5xl mx-auto mt-10 bg-white p-8 rounded-xl shadow-lg">
+        <header class="text-center mb-10 border-b pb-6">
+            <h1 id="electionTitle" class="text-4xl font-extrabold text-gray-800">ผลการลงคะแนน</h1>
+            <p class="text-red-500 font-semibold mt-2 animate-pulse">● LIVE UPDATE</p>
+        </header>
+
+        <div id="rankingBoard" class="space-y-6">
+            <!-- ข้อมูลอันดับจะถูกอัปเดตที่นี่ -->
+        </div>
+    </div>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        // ดึงชื่อการเลือกตั้ง
+        onValue(ref(db, 'settings/name'), (snapshot) => {
+            if (snapshot.exists()) {
+                document.getElementById('electionTitle').innerText = `ผลการลงคะแนน: ${snapshot.val()}`;
+            }
+        });
+
+        // ดึงคะแนนแบบ Real-time
+        onValue(ref(db, 'candidates'), (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                let candidates = Object.keys(data).map(key => ({ ...data[key] }));
+                
+                // จัดเรียงตามคะแนนโหวตจากมากไปน้อย
+                candidates.sort((a, b) => b.votes - a.votes);
+
+                const board = document.getElementById('rankingBoard');
+                board.innerHTML = '';
+
+                // คำนวณคะแนนสูงสุดเพื่อทำแถบ Progress bar สัดส่วน
+                const maxVotes = candidates[0].votes || 1; 
+
+                candidates.forEach((c, index) => {
+                    const widthPercent = (c.votes / maxVotes) * 100;
+                    board.innerHTML += `
+                        <div class="flex items-center gap-6 bg-gray-50 p-4 rounded-lg">
+                            <div class="text-5xl font-black text-gray-300 w-16 text-center">#${index + 1}</div>
+                            <img src="${c.photo}" class="w-20 h-20 rounded-full object-cover shadow">
+                            <div class="flex-1">
+                                <div class="flex justify-between items-end mb-2">
+                                    <h3 class="text-2xl font-bold text-gray-800">หมายเลข ${c.number} - ${c.name}</h3>
+                                    <span class="text-3xl font-black text-blue-600">${c.votes.toLocaleString()} <span class="text-sm font-normal text-gray-500">คะแนน</span></span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-4">
+                                    <div class="bg-blue-600 h-4 rounded-full transition-all duration-500" style="width: ${widthPercent}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        });
+    </script>
+</body>
+</html>

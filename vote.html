@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ลงคะแนนเลือกตั้ง</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <!-- ออกแบบเป็น Mobile First (กว้างสุดที่ max-w-md) -->
+    <div class="max-w-md mx-auto bg-white min-h-screen shadow relative pb-10">
+        <header class="bg-blue-600 text-white p-4 text-center sticky top-0 z-10">
+            <h1 id="electionTitle" class="text-xl font-bold">กำลังโหลด...</h1>
+        </header>
+
+        <div id="statusMessage" class="p-4 text-center text-red-600 font-semibold">
+            กำลังตรวจสอบตำแหน่งและเวลา...
+        </div>
+
+        <div id="candidatesList" class="p-4 space-y-4 hidden">
+            <!-- ผู้สมัครจะถูก Render ที่นี่ -->
+        </div>
+    </div>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { ref, get, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        // สูตรคำนวณระยะทาง Haversine
+        function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // รัศมีโลกเป็นเมตร
+            const p1 = lat1 * Math.PI/180;
+            const p2 = lat2 * Math.PI/180;
+            const dp = (lat2-lat1) * Math.PI/180;
+            const dl = (lon2-lon1) * Math.PI/180;
+            const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        async function initVoting() {
+            const settingsSnap = await get(ref(db, 'settings'));
+            const settings = settingsSnap.val();
+            document.getElementById('electionTitle').innerText = settings.name;
+
+            // ตรวจสอบเวลา
+            const now = new Date();
+            if (now < new Date(settings.start) || now > new Date(settings.end)) {
+                document.getElementById('statusMessage').innerText = "ขณะนี้ไม่อยู่ในช่วงเวลาลงคะแนน";
+                return;
+            }
+
+            // ตรวจสอบพิกัด
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const distance = getDistanceFromLatLonInM(
+                        position.coords.latitude, position.coords.longitude,
+                        settings.lat, settings.lng
+                    );
+
+                    if (distance > settings.radius) {
+                        document.getElementById('statusMessage').innerText = `คุณอยู่นอกพื้นที่ลงคะแนน (ห่างออกไป ${Math.round(distance)} เมตร)`;
+                        return;
+                    }
+
+                    // ผ่านเงื่อนไข: โหลดรายชื่อผู้สมัคร
+                    document.getElementById('statusMessage').classList.add('hidden');
+                    const candsSnap = await get(ref(db, 'candidates'));
+                    const candidates = candsSnap.val();
+                    const listEl = document.getElementById('candidatesList');
+                    listEl.classList.remove('hidden');
+
+                    // แปลง object เป็น array และจัดเรียงตามหมายเลข
+                    let candsArray = Object.keys(candidates).map(key => ({ id: key, ...candidates[key] }));
+                    candsArray.sort((a, b) => a.number - b.number);
+
+                    candsArray.forEach(c => {
+                        listEl.innerHTML += `
+                            <div class="border rounded-lg p-4 flex gap-4 items-center shadow-sm">
+                                <h2 class="text-3xl font-bold text-blue-600 w-12 text-center">${c.number}</h2>
+                                <img src="${c.photo}" class="w-16 h-16 rounded-full object-cover">
+                                <div class="flex-1">
+                                    <h3 class="font-bold text-lg">${c.name}</h3>
+                                    <p class="text-sm text-gray-500 line-clamp-2">${c.details}</p>
+                                </div>
+                                <button onclick="vote('${c.id}', ${c.votes})" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">โหวต</button>
+                            </div>
+                        `;
+                    });
+
+                }, (error) => {
+                    document.getElementById('statusMessage').innerText = "กรุณาเปิดการเข้าถึงตำแหน่งที่ตั้ง (GPS) เพื่อลงคะแนน";
+                });
+            }
+        }
+
+        // ทำให้ฟังก์ชัน vote ใช้งานผ่าน window object ได้
+        window.vote = async (id, currentVotes) => {
+            if(confirm("ยืนยันการลงคะแนน?")) {
+                let updates = {};
+                updates[`candidates/${id}/votes`] = currentVotes + 1;
+                await update(ref(db), updates);
+                alert("บันทึกคะแนนเสียงสำเร็จ!");
+                document.body.innerHTML = "<h1 class='text-center mt-20 text-2xl font-bold'>ขอบคุณที่ร่วมลงคะแนน</h1>";
+            }
+        }
+
+        initVoting();
+    </script>
+</body>
+</html>
