@@ -6,16 +6,37 @@
     <title>ผลการลงคะแนน Real-Time</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100">
-    <!-- ออกแบบเป็น Desktop First (กว้างสุดที่ max-w-5xl) -->
-    <div class="max-w-5xl mx-auto mt-10 bg-white p-8 rounded-xl shadow-lg">
-        <header class="text-center mb-10 border-b pb-6">
-            <h1 id="electionTitle" class="text-4xl font-extrabold text-gray-800">ผลการลงคะแนน</h1>
-            <p class="text-red-500 font-semibold mt-2 animate-pulse">● LIVE UPDATE</p>
-        </header>
+<body class="bg-gray-100 p-4 md:p-8">
+    
+    <!-- Desktop First Card Container -->
+    <div class="max-w-5xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
+        
+        <!-- Top Bar แสดงเวลาปัจจุบัน (ซ้าย) และ เวลานับถอยหลัง (ขวา) -->
+        <div class="bg-gray-900 text-white px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-2 border-b border-gray-800 text-sm md:text-base">
+            <!-- มุมบนซ้าย: เวลาปัจจุบัน -->
+            <div class="flex items-center gap-2">
+                <span class="text-gray-400">🕒 เวลาปัจจุบัน:</span>
+                <span id="currentTime" class="font-mono font-bold text-blue-400">กำลังโหลด...</span>
+            </div>
 
-        <div id="rankingBoard" class="space-y-6">
-            <!-- ข้อมูลอันดับจะถูกอัปเดตที่นี่ -->
+            <!-- มุมบนขวา: นับถอยหลัง -->
+            <div class="flex items-center gap-2">
+                <span class="text-gray-400">⏳ เหลือเวลาลงคะแนน:</span>
+                <span id="countdownTimer" class="font-mono font-bold text-yellow-400">กำลังคำนวณ...</span>
+            </div>
+        </div>
+
+        <div class="p-6 md:p-8">
+            <header class="text-center mb-8 border-b pb-6">
+                <h1 id="electionTitle" class="text-3xl md:text-4xl font-extrabold text-gray-800">ผลการลงคะแนน</h1>
+                <p class="text-red-500 font-semibold mt-2 animate-pulse flex items-center justify-center gap-2">
+                    <span class="w-2.5 h-2.5 bg-red-500 rounded-full inline-block"></span> LIVE UPDATE
+                </p>
+            </header>
+
+            <div id="rankingBoard" class="space-y-6">
+                <!-- ข้อมูลอันดับจะถูกอัปเดตที่นี่ -->
+            </div>
         </div>
     </div>
 
@@ -23,21 +44,82 @@
         import { db } from './firebase-config.js';
         import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-        // ดึงชื่อการเลือกตั้ง
-        onValue(ref(db, 'settings/name'), (snapshot) => {
+        let endTime = null;
+        let startTime = null;
+
+        // 1. ดึงข้อมูลการตั้งค่า (ชื่อการเลือกตั้ง และ เวลาเปิด-ปิดโหวต)
+        onValue(ref(db, 'settings'), (snapshot) => {
             if (snapshot.exists()) {
-                document.getElementById('electionTitle').innerText = `ผลการลงคะแนน: ${snapshot.val()}`;
+                const settings = snapshot.val();
+                if (settings.name) {
+                    document.getElementById('electionTitle').innerText = `ผลการลงคะแนน: ${settings.name}`;
+                }
+                if (settings.start) {
+                    startTime = new Date(settings.start);
+                }
+                if (settings.end) {
+                    endTime = new Date(settings.end);
+                }
             }
         });
 
-        // ดึงคะแนนแบบ Real-time
+        // 2. ฟังก์ชันนาฬิกาและนับถอยหลัง (อัปเดตทุกๆ 1 วินาที)
+        setInterval(() => {
+            const now = new Date();
+
+            // --- อัปเดตเวลาปัจจุบัน (มุมบนซ้าย) ---
+            document.getElementById('currentTime').innerText = now.toLocaleString('th-TH', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+
+            // --- คำนวณเวลานับถอยหลัง (มุมบนขวา) ---
+            const timerEl = document.getElementById('countdownTimer');
+            
+            if (!endTime) {
+                timerEl.innerText = "ยังไม่ได้ตั้งค่าเวลาปิดโหวต";
+                timerEl.className = "font-mono font-bold text-gray-400";
+                return;
+            }
+
+            if (startTime && now < startTime) {
+                timerEl.innerText = "ยังไม่ถึงเวลาเริ่มลงคะแนน";
+                timerEl.className = "font-mono font-bold text-yellow-400";
+                return;
+            }
+
+            const diff = endTime - now;
+
+            if (diff <= 0) {
+                timerEl.innerText = "หมดเวลาลงคะแนนแล้ว";
+                timerEl.className = "font-mono font-bold text-red-500";
+            } else {
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+                // แปลงรูปแบบตัวเลขให้มี 2 หลักเสมอ (เช่น 01:05:09)
+                const hStr = String(hours).padStart(2, '0');
+                const mStr = String(minutes).padStart(2, '0');
+                const sStr = String(seconds).padStart(2, '0');
+
+                timerEl.innerText = `${hStr}:${mStr}:${sStr}`;
+                timerEl.className = "font-mono font-bold text-green-400";
+            }
+        }, 1000);
+
+        // 3. ดึงและแสดงคะแนนแบบ Real-time
         onValue(ref(db, 'candidates'), (snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
                 let candidates = Object.keys(data).map(key => ({ ...data[key] }));
                 
                 // จัดเรียงตามคะแนนโหวตจากมากไปน้อย
-                candidates.sort((a, b) => b.votes - a.votes);
+                candidates.sort((a, b) => (b.votes || 0) - (a.votes || 0));
 
                 const board = document.getElementById('rankingBoard');
                 board.innerHTML = '';
@@ -46,23 +128,28 @@
                 const maxVotes = candidates[0].votes || 1; 
 
                 candidates.forEach((c, index) => {
-                    const widthPercent = (c.votes / maxVotes) * 100;
+                    const votes = c.votes || 0;
+                    const widthPercent = maxVotes > 0 ? (votes / maxVotes) * 100 : 0;
                     board.innerHTML += `
-                        <div class="flex items-center gap-6 bg-gray-50 p-4 rounded-lg">
-                            <div class="text-5xl font-black text-gray-300 w-16 text-center">#${index + 1}</div>
-                            <img src="${c.photo}" class="w-20 h-20 rounded-full object-cover shadow">
-                            <div class="flex-1">
-                                <div class="flex justify-between items-end mb-2">
-                                    <h3 class="text-2xl font-bold text-gray-800">หมายเลข ${c.number} - ${c.name}</h3>
-                                    <span class="text-3xl font-black text-blue-600">${c.votes.toLocaleString()} <span class="text-sm font-normal text-gray-500">คะแนน</span></span>
+                        <div class="flex items-center gap-4 md:gap-6 bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-sm">
+                            <div class="text-3xl md:text-5xl font-black text-gray-300 w-12 md:w-16 text-center shrink-0">#${index + 1}</div>
+                            <img src="${c.photo || 'https://via.placeholder.com/150'}" class="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover shadow shrink-0">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-end mb-2 gap-2">
+                                    <h3 class="text-lg md:text-2xl font-bold text-gray-800 truncate">หมายเลข ${c.number || '-'} ${c.name}</h3>
+                                    <span class="text-xl md:text-3xl font-black text-blue-600 shrink-0">${votes.toLocaleString()} <span class="text-xs md:text-sm font-normal text-gray-500">คะแนน</span></span>
                                 </div>
-                                <div class="w-full bg-gray-200 rounded-full h-4">
-                                    <div class="bg-blue-600 h-4 rounded-full transition-all duration-500" style="width: ${widthPercent}%"></div>
+                                <div class="w-full bg-gray-200 rounded-full h-3 md:h-4 overflow-hidden">
+                                    <div class="bg-blue-600 h-full rounded-full transition-all duration-500" style="width: ${widthPercent}%"></div>
                                 </div>
                             </div>
                         </div>
                     `;
                 });
+            } else {
+                document.getElementById('rankingBoard').innerHTML = `
+                    <div class="text-center py-10 text-gray-400">ยังไม่มีข้อมูลผู้สมัครในระบบ</div>
+                `;
             }
         });
     </script>
