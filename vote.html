@@ -6,28 +6,38 @@
     <title>ลงคะแนนเลือกตั้ง</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-gray-100 text-gray-800 font-sans">
+    
     <!-- ออกแบบเป็น Mobile First (กว้างสุดที่ max-w-md) -->
-    <div class="max-w-md mx-auto bg-white min-h-screen shadow relative pb-10">
-        <header class="bg-blue-600 text-white p-4 text-center sticky top-0 z-10">
-            <h1 id="electionTitle" class="text-xl font-bold">กำลังโหลด...</h1>
+    <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg relative pb-10">
+        
+        <!-- Header -->
+        <header class="bg-blue-600 text-white p-6 text-center sticky top-0 z-20 shadow-md rounded-b-2xl">
+            <h1 id="electionTitle" class="text-2xl font-bold">กำลังโหลดข้อมูล...</h1>
+            <p class="text-blue-100 text-sm mt-1">กรุณาเลือกผู้สมัครที่คุณต้องการลงคะแนน</p>
         </header>
 
-        <div id="statusMessage" class="p-4 text-center text-red-600 font-semibold mt-10">
+        <!-- ข้อความแจ้งเตือนสถานะ (GPS/เวลา) -->
+        <div id="statusMessage" class="p-6 text-center text-red-600 font-semibold mt-10">
+            <div class="animate-pulse text-4xl mb-4">📍</div>
             กำลังตรวจสอบตำแหน่งและเวลา...<br>
-            <span class="text-sm text-gray-500 font-normal">(กรุณากดอนุญาตให้เข้าถึง GPS หากมีแจ้งเตือน)</span>
+            <span class="text-sm text-gray-500 font-normal mt-2 block">
+                (กรุณากด "อนุญาต" หรือ "Allow" ให้เบราว์เซอร์เข้าถึงตำแหน่งที่ตั้ง GPS ของคุณ)
+            </span>
         </div>
 
-        <div id="candidatesList" class="p-4 space-y-4 hidden">
-            <!-- ผู้สมัครจะถูก Render ที่นี่ -->
+        <!-- รายชื่อผู้สมัคร -->
+        <div id="candidatesList" class="p-4 space-y-6 hidden mt-2">
+            <!-- ข้อมูลผู้สมัครจะถูกนำมาแสดงที่นี่ -->
         </div>
+        
     </div>
 
     <script type="module">
         import { db } from './firebase-config.js';
         import { ref, get, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-        // สูตรคำนวณระยะทาง Haversine
+        // สูตรคำนวณระยะทาง GPS (Haversine formula)
         function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
             const p1 = lat1 * Math.PI/180;
@@ -42,10 +52,9 @@
             try {
                 const settingsSnap = await get(ref(db, 'settings'));
                 
-                // ตรวจสอบว่าแอดมินตั้งค่าระบบหรือยัง
                 if (!settingsSnap.exists()) {
-                    document.getElementById('statusMessage').innerText = "ยังไม่มีการตั้งค่าระบบการเลือกตั้ง กรุณาแจ้งแอดมินให้ตั้งค่าก่อน";
-                    document.getElementById('electionTitle').innerText = "ยังไม่พร้อมใช้งาน";
+                    document.getElementById('statusMessage').innerText = "ยังไม่มีการตั้งค่าระบบการเลือกตั้ง";
+                    document.getElementById('electionTitle').innerText = "ระบบปิดปรับปรุง";
                     return;
                 }
 
@@ -58,18 +67,20 @@
                 const endTime = new Date(settings.end);
 
                 if (now < startTime || now > endTime) {
-                    document.getElementById('statusMessage').innerHTML = `ขณะนี้ไม่อยู่ในช่วงเวลาลงคะแนน<br><span class="text-sm text-gray-500">(เปิดโหวต: ${startTime.toLocaleString('th-TH')} - ${endTime.toLocaleString('th-TH')})</span>`;
+                    document.getElementById('statusMessage').innerHTML = `
+                        <div class="text-4xl mb-4">⏳</div>
+                        ขณะนี้ไม่อยู่ในช่วงเวลาลงคะแนน<br>
+                        <span class="text-sm text-gray-500 block mt-2">
+                            เปิดโหวต: ${startTime.toLocaleString('th-TH')} <br>
+                            ปิดโหวต: ${endTime.toLocaleString('th-TH')}
+                        </span>
+                    `;
                     return;
                 }
 
-                // ตรวจสอบพิกัด
+                // ตรวจสอบพิกัด GPS
                 if ("geolocation" in navigator) {
-                    // ตั้งค่าการดึง GPS แบบกำหนดเวลา timeout ไว้ที่ 10 วินาที
-                    const geoOptions = {
-                        enableHighAccuracy: true,
-                        maximumAge: 0,
-                        timeout: 10000 
-                    };
+                    const geoOptions = { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 };
 
                     navigator.geolocation.getCurrentPosition(async (position) => {
                         const distance = getDistanceFromLatLonInM(
@@ -78,79 +89,101 @@
                         );
 
                         if (distance > settings.radius) {
-                            document.getElementById('statusMessage').innerText = `คุณอยู่นอกพื้นที่ลงคะแนน (คุณอยู่ห่างจุดลงคะแนน ${Math.round(distance)} เมตร, อนุญาตเฉพาะ ${settings.radius} เมตร)`;
+                            document.getElementById('statusMessage').innerHTML = `
+                                <div class="text-4xl mb-4">🚫</div>
+                                คุณอยู่นอกพื้นที่คูหาลงคะแนน<br>
+                                <span class="text-sm text-gray-500 block mt-2">
+                                    คุณอยู่ห่างจุดลงคะแนน ${Math.round(distance)} เมตร<br>
+                                    (ระบบอนุญาตเฉพาะในรัศมี ${settings.radius} เมตร)
+                                </span>
+                            `;
                             return;
                         }
 
-                        // โหลดข้อมูลผู้สมัครเมื่อผ่านเงื่อนไขพิกัดและเวลา
+                        // ผ่านเงื่อนไข: ดึงข้อมูลผู้สมัครมาแสดง
                         const candsSnap = await get(ref(db, 'candidates'));
                         if (!candsSnap.exists()) {
                             document.getElementById('statusMessage').innerText = "ยังไม่มีข้อมูลผู้สมัครในระบบ";
                             return;
                         }
 
-                        // แสดงรายชื่อผู้สมัคร
                         document.getElementById('statusMessage').classList.add('hidden');
                         const candidates = candsSnap.val();
                         const listEl = document.getElementById('candidatesList');
                         listEl.classList.remove('hidden');
-                        listEl.innerHTML = ''; // เคลียร์ข้อความเก่า
+                        listEl.innerHTML = ''; 
 
                         let candsArray = Object.keys(candidates).map(key => ({ id: key, ...candidates[key] }));
+                        // เรียงตามหมายเลขผู้สมัคร
                         candsArray.sort((a, b) => (a.number || 0) - (b.number || 0));
 
                         candsArray.forEach(c => {
+                            // แสดงเฉพาะ หมายเลข, รูป, ชื่อ, นโยบาย (ไม่แสดงคะแนน)
                             listEl.innerHTML += `
-                                <div class="border rounded-lg p-4 flex gap-4 items-center shadow-sm">
-                                    <h2 class="text-3xl font-bold text-blue-600 w-12 text-center">${c.number || '-'}</h2>
-                                    <img src="${c.photo || 'https://via.placeholder.com/150'}" class="w-16 h-16 rounded-full object-cover">
-                                    <div class="flex-1">
-                                        <h3 class="font-bold text-lg">${c.name}</h3>
-                                        <p class="text-sm text-gray-500 line-clamp-2">${c.details || ''}</p>
+                                <div class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                                    <div class="absolute top-0 right-0 bg-blue-600 text-white w-16 h-16 rounded-bl-3xl flex items-center justify-center shadow-md">
+                                        <span class="text-2xl font-black">${c.number || '-'}</span>
                                     </div>
-                                    <button onclick="vote('${c.id}', ${c.votes || 0})" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 active:scale-95 transition-transform">โหวต</button>
+                                    
+                                    <div class="flex flex-col items-center mb-4 mt-2">
+                                        <img src="${c.photo || 'https://via.placeholder.com/150'}" class="w-28 h-28 rounded-full object-cover shadow-md border-4 border-gray-50 mb-3">
+                                        <h3 class="font-bold text-xl text-gray-800 text-center">${c.name}</h3>
+                                    </div>
+                                    
+                                    <div class="bg-gray-50 rounded-xl p-4 mb-5 text-sm text-gray-600">
+                                        <p class="whitespace-pre-line">${c.details || 'ไม่มีข้อมูลรายละเอียดเพิ่มเติม'}</p>
+                                    </div>
+                                    
+                                    <button onclick="vote('${c.id}', ${c.votes || 0})" class="w-full bg-blue-600 text-white font-bold text-lg py-4 rounded-xl hover:bg-blue-700 active:scale-95 transition-all shadow-md">
+                                        🗳️ ลงคะแนนให้เบอร์ ${c.number || '-'}
+                                    </button>
                                 </div>
                             `;
                         });
 
                     }, (error) => {
-                        // ดักจับ Error หากดึง GPS ไม่สำเร็จ
                         let errorStr = "";
                         switch(error.code) {
-                            case 1: errorStr = "คุณปฏิเสธการเข้าถึงตำแหน่ง (GPS) กรุณาอนุญาตในเบราว์เซอร์"; break;
-                            case 2: errorStr = "ไม่สามารถหาพิกัดตำแหน่งของคุณได้"; break;
-                            case 3: errorStr = "ใช้เวลาหาตำแหน่งนานเกินไป (Timeout) กรุณารีเฟรชหน้าเว็บ"; break;
+                            case 1: errorStr = "คุณปฏิเสธการเข้าถึง GPS กรุณาอนุญาตในการตั้งค่าเบราว์เซอร์"; break;
+                            case 2: errorStr = "ไม่สามารถหาพิกัดตำแหน่งของคุณได้ในขณะนี้"; break;
+                            case 3: errorStr = "ใช้เวลาหาตำแหน่งนานเกินไป กรุณารีเฟรชหน้าเว็บ"; break;
                             default: errorStr = "เกิดข้อผิดพลาดในการดึงตำแหน่ง";
                         }
-                        document.getElementById('statusMessage').innerText = errorStr;
+                        document.getElementById('statusMessage').innerHTML = `<div class="text-4xl mb-4">📍</div>${errorStr}`;
                     }, geoOptions);
 
                 } else {
-                    document.getElementById('statusMessage').innerText = "อุปกรณ์หรือเบราว์เซอร์ของคุณไม่รองรับการระบุตำแหน่ง (GPS)";
+                    document.getElementById('statusMessage').innerText = "อุปกรณ์ของคุณไม่รองรับการระบุตำแหน่ง (GPS)";
                 }
 
             } catch (err) {
-                // ดักจับ Error ที่เกิดจากระบบ เช่น ฐานข้อมูลรวน
-                document.getElementById('statusMessage').innerText = "เกิดข้อผิดพลาดในการโหลดข้อมูล: " + err.message;
+                document.getElementById('statusMessage').innerText = "เกิดข้อผิดพลาดในการเชื่อมต่อข้อมูล";
+                console.error(err);
             }
         }
 
+        // ฟังก์ชันเมื่อกดปุ่มลงคะแนน
         window.vote = async (id, currentVotes) => {
-            if(confirm("ยืนยันการลงคะแนน? (กดแล้วไม่สามารถยกเลิกได้)")) {
+            if(confirm("คุณยืนยันที่จะลงคะแนนให้ผู้สมัครท่านนี้ใช่หรือไม่?\n\n(กดยืนยันแล้วจะไม่สามารถแก้ไขได้)")) {
                 try {
                     let updates = {};
+                    // เพิ่มคะแนนไปที่ฐานข้อมูล (ทำอยู่เบื้องหลัง ไม่แสดงให้ผู้ใช้เห็น)
                     updates[`candidates/${id}/votes`] = currentVotes + 1;
                     await update(ref(db), updates);
+                    
+                    // เปลี่ยนหน้าจอเป็น "ลงคะแนนสำเร็จ"
                     document.body.innerHTML = `
                         <div class="flex flex-col items-center justify-center min-h-screen bg-green-50 p-6 text-center">
-                            <div class="text-6xl mb-4">✅</div>
-                            <h1 class='text-2xl font-bold text-green-700 mb-2'>ลงคะแนนสำเร็จ</h1>
-                            <p class='text-green-600'>ขอบคุณที่ร่วมใช้สิทธิในการเลือกตั้งครั้งนี้</p>
-                            <a href="results.html" class="mt-8 bg-green-600 text-white px-6 py-3 rounded-full shadow-lg">ดูผลการลงคะแนน</a>
+                            <div class="text-7xl mb-6 bg-white w-32 h-32 flex items-center justify-center rounded-full shadow-lg">✅</div>
+                            <h1 class='text-3xl font-bold text-green-700 mb-3'>ลงคะแนนสำเร็จ!</h1>
+                            <p class='text-green-600 text-lg mb-8'>ระบบได้บันทึกคะแนนเสียงของคุณเรียบร้อยแล้ว<br>ขอบคุณที่ร่วมใช้สิทธิ</p>
+                            <a href="index.html" class="bg-green-600 text-white px-8 py-4 rounded-xl font-bold shadow-md hover:bg-green-700 active:scale-95 transition-all">
+                                กลับสู่หน้าแรก
+                            </a>
                         </div>
                     `;
                 } catch(err) {
-                    alert("เกิดข้อผิดพลาดในการบันทึกคะแนน: " + err.message);
+                    alert("เกิดข้อผิดพลาดในการบันทึกคะแนน กรุณาลองใหม่อีกครั้ง");
                 }
             }
         }
