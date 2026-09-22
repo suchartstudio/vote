@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>หน้าแรก - ระบบจัดการการลงคะแนนเลือกตั้ง</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans">
+    
+    <!-- ออกแบบเป็น Mobile First (กว้างสุดที่ max-w-md) -->
+    <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg flex flex-col">
+        
+        <!-- Header -->
+        <div class="bg-blue-600 text-white p-8 text-center rounded-b-3xl shadow-md">
+            <h1 class="text-2xl font-bold mb-2">ระบบการลงคะแนน<br>เลือกตั้งออนไลน์</h1>
+            <p class="text-blue-100 text-sm">กรุณาเลือกเมนูที่ต้องการใช้งาน</p>
+        </div>
+
+        <!-- Menu Container -->
+        <div class="p-6 flex-1 flex flex-col gap-4 mt-2">
+            
+            <!-- Section: สำหรับผู้ใช้งานทั่วไป -->
+            <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 mt-2">ส่วนของผู้ลงคะแนนเสียง</h2>
+            
+            <a href="vote.html" class="flex items-center p-4 bg-green-50 border border-green-200 rounded-2xl hover:bg-green-100 transition-colors shadow-sm active:scale-95">
+                <div class="bg-green-500 text-white w-14 h-14 flex items-center justify-center rounded-full text-2xl shadow-sm mr-4 shrink-0">
+                    🗳️
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-green-800">เข้าสู่คูหาลงคะแนน</h3>
+                    <p class="text-sm text-green-600 mt-1">ตรวจสอบพิกัดและลงคะแนนเสียง</p>
+                </div>
+            </a>
+
+            <a href="results.html" class="flex items-center p-4 bg-blue-50 border border-blue-200 rounded-2xl hover:bg-blue-100 transition-colors shadow-sm active:scale-95">
+                <div class="bg-blue-500 text-white w-14 h-14 flex items-center justify-center rounded-full text-2xl shadow-sm mr-4 shrink-0">
+                    📊
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-blue-800">ผลการลงคะแนน</h3>
+                    <p class="text-sm text-blue-600 mt-1">ดูผลการนับคะแนนแบบ Real-time</p>
+                </div>
+            </a>
+
+            <!-- Divider -->
+            <div class="h-px bg-gray-200 my-4"></div>
+
+            <!-- Section: สำหรับเจ้าหน้าที่/แอดมิน -->
+            <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">ส่วนของเจ้าหน้าที่ (Admin)</h2>
+
+            <a href="draw.html" class="flex items-center p-4 bg-purple-50 border border-purple-200 rounded-2xl hover:bg-purple-100 transition-colors shadow-sm active:scale-95">
+                <div class="bg-purple-500 text-white w-14 h-14 flex items-center justify-center rounded-full text-2xl shadow-sm mr-4 shrink-0">
+                    🎲
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-purple-800">สุ่มหมายเลขผู้สมัคร</h3>
+                    <p class="text-sm text-purple-600 mt-1">จับฉลากเบอร์ผู้สมัครแบบสุ่ม</p>
+                </div>
+            </a>
+
+            <a href="admin.html" class="flex items-center p-4 bg-gray-50 border border-gray-200 rounded-2xl hover:bg-gray-100 transition-colors shadow-sm active:scale-95">
+                <div class="bg-gray-700 text-white w-14 h-14 flex items-center justify-center rounded-full text-2xl shadow-sm mr-4 shrink-0">
+                    ⚙️
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800">ตั้งค่าระบบ</h3>
+                    <p class="text-sm text-gray-600 mt-1">จัดการผู้สมัคร เวลา และพื้นที่ลงคะแนน</p>
+                </div>
+            </a>
+
+        </div>
+        
+        <!-- Footer -->
+        <div class="p-6 text-center text-gray-400 text-xs">
+            Powered by Firebase & GitHub Pages
+        </div>
+    </div>
+
+</body>
+</html>
