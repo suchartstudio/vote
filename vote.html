@@ -8,16 +8,13 @@
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans">
     
-    <!-- ออกแบบเป็น Mobile First (กว้างสุดที่ max-w-md) -->
     <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg relative pb-10">
         
-        <!-- Header -->
         <header class="bg-blue-600 text-white p-6 text-center sticky top-0 z-20 shadow-md rounded-b-2xl">
             <h1 id="electionTitle" class="text-2xl font-bold">กำลังโหลดข้อมูล...</h1>
             <p class="text-blue-100 text-sm mt-1">กรุณาเลือกผู้สมัครที่คุณต้องการลงคะแนน</p>
         </header>
 
-        <!-- ข้อความแจ้งเตือนสถานะ (GPS/เวลา) -->
         <div id="statusMessage" class="p-6 text-center text-red-600 font-semibold mt-10">
             <div class="animate-pulse text-4xl mb-4">📍</div>
             กำลังตรวจสอบตำแหน่งและเวลา...<br>
@@ -26,7 +23,6 @@
             </span>
         </div>
 
-        <!-- รายชื่อผู้สมัคร -->
         <div id="candidatesList" class="p-4 space-y-6 hidden mt-2">
             <!-- ข้อมูลผู้สมัครจะถูกนำมาแสดงที่นี่ -->
         </div>
@@ -37,7 +33,6 @@
         import { db } from './firebase-config.js';
         import { ref, get, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-        // สูตรคำนวณระยะทาง GPS (Haversine formula)
         function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
             const p1 = lat1 * Math.PI/180;
@@ -59,9 +54,27 @@
                 }
 
                 const settings = settingsSnap.val();
-                document.getElementById('electionTitle').innerText = settings.name || "ระบบลงคะแนน";
+                const electionName = settings.name || "การเลือกตั้ง";
+                document.getElementById('electionTitle').innerText = electionName;
 
-                // ตรวจสอบเวลา
+                // 1. ตรวจสอบการลงคะแนนซ้ำจาก LocalStorage
+                // ใช้ชื่อการเลือกตั้งเป็น Key เพื่อให้โหวตใหม่ได้เมื่อแอดมินตั้งชื่อการเลือกตั้งใหม่
+                if (localStorage.getItem(`voted_${electionName}`)) {
+                    document.getElementById('statusMessage').innerHTML = `
+                        <div class="text-6xl mb-4 text-green-500">✅</div>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2">คุณได้ใช้สิทธิไปแล้ว</h2>
+                        <span class="text-sm text-gray-500 font-normal block mt-2">
+                            อุปกรณ์นี้ได้ทำการลงคะแนนไปแล้ว<br>ไม่สามารถลงคะแนนซ้ำได้
+                        </span>
+                        <a href="results.html" class="mt-8 inline-block bg-blue-600 text-white px-8 py-3 rounded-xl shadow-md hover:bg-blue-700 active:scale-95 transition-all">
+                            ดูผลการลงคะแนน
+                        </a>
+                    `;
+                    document.getElementById('statusMessage').classList.replace('text-red-600', 'text-gray-800');
+                    return; // หยุดการทำงาน ไม่ให้โหลดรายชื่อผู้สมัคร
+                }
+
+                // 2. ตรวจสอบเวลา
                 const now = new Date();
                 const startTime = new Date(settings.start);
                 const endTime = new Date(settings.end);
@@ -78,7 +91,7 @@
                     return;
                 }
 
-                // ตรวจสอบพิกัด GPS
+                // 3. ตรวจสอบพิกัด GPS
                 if ("geolocation" in navigator) {
                     const geoOptions = { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 };
 
@@ -100,7 +113,7 @@
                             return;
                         }
 
-                        // ผ่านเงื่อนไข: ดึงข้อมูลผู้สมัครมาแสดง
+                        // 4. ดึงและแสดงข้อมูลผู้สมัคร
                         const candsSnap = await get(ref(db, 'candidates'));
                         if (!candsSnap.exists()) {
                             document.getElementById('statusMessage').innerText = "ยังไม่มีข้อมูลผู้สมัครในระบบ";
@@ -114,11 +127,10 @@
                         listEl.innerHTML = ''; 
 
                         let candsArray = Object.keys(candidates).map(key => ({ id: key, ...candidates[key] }));
-                        // เรียงตามหมายเลขผู้สมัคร
                         candsArray.sort((a, b) => (a.number || 0) - (b.number || 0));
 
                         candsArray.forEach(c => {
-                            // แสดงเฉพาะ หมายเลข, รูป, ชื่อ, นโยบาย (ไม่แสดงคะแนน)
+                            // ปรับปุ่ม vote ให้แสดงผลทั้งหมายเลขและชื่อผู้สมัคร พร้อมส่งค่า electionName ไปในฟังก์ชัน
                             listEl.innerHTML += `
                                 <div class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
                                     <div class="absolute top-0 right-0 bg-blue-600 text-white w-16 h-16 rounded-bl-3xl flex items-center justify-center shadow-md">
@@ -134,8 +146,9 @@
                                         <p class="whitespace-pre-line">${c.details || 'ไม่มีข้อมูลรายละเอียดเพิ่มเติม'}</p>
                                     </div>
                                     
-                                    <button onclick="vote('${c.id}', ${c.votes || 0})" class="w-full bg-blue-600 text-white font-bold text-lg py-4 rounded-xl hover:bg-blue-700 active:scale-95 transition-all shadow-md">
-                                        🗳️ ลงคะแนนให้เบอร์ ${c.number || '-'}
+                                    <button onclick="vote('${c.id}', '${c.name}', ${c.number || '-'}, ${c.votes || 0}, '${electionName}')" class="w-full bg-blue-600 text-white font-bold text-base md:text-lg py-4 rounded-xl hover:bg-blue-700 active:scale-95 transition-all shadow-md flex flex-col items-center justify-center gap-1">
+                                        <span>🗳️ ลงคะแนนให้เบอร์ ${c.number || '-'}</span>
+                                        <span class="text-sm text-blue-200 font-normal">คุณ ${c.name}</span>
                                     </button>
                                 </div>
                             `;
@@ -162,23 +175,25 @@
             }
         }
 
-        // ฟังก์ชันเมื่อกดปุ่มลงคะแนน
-        window.vote = async (id, currentVotes) => {
-            if(confirm("คุณยืนยันที่จะลงคะแนนให้ผู้สมัครท่านนี้ใช่หรือไม่?\n\n(กดยืนยันแล้วจะไม่สามารถแก้ไขได้)")) {
+        // อัปเดตฟังก์ชันโหวต ให้บันทึกการกระทำลง LocalStorage
+        window.vote = async (id, name, number, currentVotes, electionName) => {
+            // แจ้งเตือนยืนยันโดยระบุเบอร์และชื่อให้ชัดเจน
+            if(confirm(`คุณยืนยันที่จะลงคะแนนให้\n\nเบอร์ ${number} : ${name} \n\n(กดยืนยันแล้วจะไม่สามารถแก้ไขหรือลงคะแนนซ้ำได้)`)) {
                 try {
                     let updates = {};
-                    // เพิ่มคะแนนไปที่ฐานข้อมูล (ทำอยู่เบื้องหลัง ไม่แสดงให้ผู้ใช้เห็น)
                     updates[`candidates/${id}/votes`] = currentVotes + 1;
                     await update(ref(db), updates);
                     
-                    // เปลี่ยนหน้าจอเป็น "ลงคะแนนสำเร็จ"
+                    // บันทึกสถานะว่าโหวตแล้วลงในอุปกรณ์
+                    localStorage.setItem(`voted_${electionName}`, 'true');
+                    
                     document.body.innerHTML = `
                         <div class="flex flex-col items-center justify-center min-h-screen bg-green-50 p-6 text-center">
                             <div class="text-7xl mb-6 bg-white w-32 h-32 flex items-center justify-center rounded-full shadow-lg">✅</div>
                             <h1 class='text-3xl font-bold text-green-700 mb-3'>ลงคะแนนสำเร็จ!</h1>
                             <p class='text-green-600 text-lg mb-8'>ระบบได้บันทึกคะแนนเสียงของคุณเรียบร้อยแล้ว<br>ขอบคุณที่ร่วมใช้สิทธิ</p>
-                            <a href="index.html" class="bg-green-600 text-white px-8 py-4 rounded-xl font-bold shadow-md hover:bg-green-700 active:scale-95 transition-all">
-                                กลับสู่หน้าแรก
+                            <a href="results.html" class="bg-green-600 text-white px-8 py-4 rounded-xl font-bold shadow-md hover:bg-green-700 active:scale-95 transition-all">
+                                ดูผลการลงคะแนน
                             </a>
                         </div>
                     `;
