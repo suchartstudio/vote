@@ -33,6 +33,18 @@
         import { db } from './firebase-config.js';
         import { ref, get, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
+        // ชุดสีธีมสำหรับการ์ดผู้สมัครแต่ละคน (สลับสีกันไป)
+        const themes = [
+            { bg: 'bg-blue-50', border: 'border-blue-200', btn: 'bg-blue-600 hover:bg-blue-700', textBtn: 'text-blue-200' },
+            { bg: 'bg-green-50', border: 'border-green-200', btn: 'bg-green-600 hover:bg-green-700', textBtn: 'text-green-200' },
+            { bg: 'bg-purple-50', border: 'border-purple-200', btn: 'bg-purple-600 hover:bg-purple-700', textBtn: 'text-purple-200' },
+            { bg: 'bg-orange-50', border: 'border-orange-200', btn: 'bg-orange-600 hover:bg-orange-700', textBtn: 'text-orange-200' },
+            { bg: 'bg-pink-50', border: 'border-pink-200', btn: 'bg-pink-600 hover:bg-pink-700', textBtn: 'text-pink-200' },
+            { bg: 'bg-teal-50', border: 'border-teal-200', btn: 'bg-teal-600 hover:bg-teal-700', textBtn: 'text-teal-200' },
+            { bg: 'bg-red-50', border: 'border-red-200', btn: 'bg-red-600 hover:bg-red-700', textBtn: 'text-red-200' },
+            { bg: 'bg-indigo-50', border: 'border-indigo-200', btn: 'bg-indigo-600 hover:bg-indigo-700', textBtn: 'text-indigo-200' }
+        ];
+
         function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
             const p1 = lat1 * Math.PI/180;
@@ -57,8 +69,7 @@
                 const electionName = settings.name || "การเลือกตั้ง";
                 document.getElementById('electionTitle').innerText = electionName;
 
-                // 1. ตรวจสอบการลงคะแนนซ้ำจาก LocalStorage
-                // ใช้ชื่อการเลือกตั้งเป็น Key เพื่อให้โหวตใหม่ได้เมื่อแอดมินตั้งชื่อการเลือกตั้งใหม่
+                // ตรวจสอบการลงคะแนนซ้ำจาก LocalStorage
                 if (localStorage.getItem(`voted_${electionName}`)) {
                     document.getElementById('statusMessage').innerHTML = `
                         <div class="text-6xl mb-4 text-green-500">✅</div>
@@ -71,10 +82,10 @@
                         </a>
                     `;
                     document.getElementById('statusMessage').classList.replace('text-red-600', 'text-gray-800');
-                    return; // หยุดการทำงาน ไม่ให้โหลดรายชื่อผู้สมัคร
+                    return; 
                 }
 
-                // 2. ตรวจสอบเวลา
+                // ตรวจสอบเวลา
                 const now = new Date();
                 const startTime = new Date(settings.start);
                 const endTime = new Date(settings.end);
@@ -91,7 +102,7 @@
                     return;
                 }
 
-                // 3. ตรวจสอบพิกัด GPS
+                // ตรวจสอบพิกัด GPS
                 if ("geolocation" in navigator) {
                     const geoOptions = { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 };
 
@@ -113,7 +124,7 @@
                             return;
                         }
 
-                        // 4. ดึงและแสดงข้อมูลผู้สมัคร
+                        // ดึงข้อมูลผู้สมัคร
                         const candsSnap = await get(ref(db, 'candidates'));
                         if (!candsSnap.exists()) {
                             document.getElementById('statusMessage').innerText = "ยังไม่มีข้อมูลผู้สมัครในระบบ";
@@ -129,26 +140,27 @@
                         let candsArray = Object.keys(candidates).map(key => ({ id: key, ...candidates[key] }));
                         candsArray.sort((a, b) => (a.number || 0) - (b.number || 0));
 
-                        candsArray.forEach(c => {
-                            // ปรับปุ่ม vote ให้แสดงผลทั้งหมายเลขและชื่อผู้สมัคร พร้อมส่งค่า electionName ไปในฟังก์ชัน
+                        // วนลูปสร้างการ์ดผู้สมัคร พร้อมนำ Theme สีมาใช้
+                        candsArray.forEach((c, index) => {
+                            // เลือกสีตามลำดับ (วนลูป 8 สี)
+                            const theme = themes[index % themes.length];
+                            
+                            // นำหมายเลขมุมขวาบนออก และใช้สี theme ในส่วนต่างๆ
                             listEl.innerHTML += `
-                                <div class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
-                                    <div class="absolute top-0 right-0 bg-blue-600 text-white w-16 h-16 rounded-bl-3xl flex items-center justify-center shadow-md">
-                                        <span class="text-2xl font-black">${c.number || '-'}</span>
-                                    </div>
+                                <div class="${theme.bg} border ${theme.border} rounded-2xl p-5 shadow-sm relative overflow-hidden transition-all">
                                     
                                     <div class="flex flex-col items-center mb-4 mt-2">
-                                        <img src="${c.photo || 'https://via.placeholder.com/150'}" class="w-28 h-28 rounded-full object-cover shadow-md border-4 border-gray-50 mb-3">
+                                        <img src="${c.photo || 'https://via.placeholder.com/150'}" class="w-28 h-28 rounded-full object-cover shadow-md border-4 border-white mb-3 bg-white">
                                         <h3 class="font-bold text-xl text-gray-800 text-center">${c.name}</h3>
                                     </div>
                                     
-                                    <div class="bg-gray-50 rounded-xl p-4 mb-5 text-sm text-gray-600">
+                                    <div class="bg-white/60 rounded-xl p-4 mb-5 text-sm text-gray-700 shadow-inner">
                                         <p class="whitespace-pre-line">${c.details || 'ไม่มีข้อมูลรายละเอียดเพิ่มเติม'}</p>
                                     </div>
                                     
-                                    <button onclick="vote('${c.id}', '${c.name}', ${c.number || '-'}, ${c.votes || 0}, '${electionName}')" class="w-full bg-blue-600 text-white font-bold text-base md:text-lg py-4 rounded-xl hover:bg-blue-700 active:scale-95 transition-all shadow-md flex flex-col items-center justify-center gap-1">
+                                    <button onclick="vote('${c.id}', '${c.name}', ${c.number || '-'}, ${c.votes || 0}, '${electionName}')" class="w-full ${theme.btn} text-white font-bold text-base md:text-lg py-4 rounded-xl active:scale-95 transition-all shadow-md flex flex-col items-center justify-center gap-1">
                                         <span>🗳️ ลงคะแนนให้เบอร์ ${c.number || '-'}</span>
-                                        <span class="text-sm text-blue-200 font-normal">คุณ ${c.name}</span>
+                                        <span class="text-sm ${theme.textBtn} font-normal">คุณ ${c.name}</span>
                                     </button>
                                 </div>
                             `;
@@ -175,16 +187,13 @@
             }
         }
 
-        // อัปเดตฟังก์ชันโหวต ให้บันทึกการกระทำลง LocalStorage
         window.vote = async (id, name, number, currentVotes, electionName) => {
-            // แจ้งเตือนยืนยันโดยระบุเบอร์และชื่อให้ชัดเจน
             if(confirm(`คุณยืนยันที่จะลงคะแนนให้\n\nเบอร์ ${number} : ${name} \n\n(กดยืนยันแล้วจะไม่สามารถแก้ไขหรือลงคะแนนซ้ำได้)`)) {
                 try {
                     let updates = {};
                     updates[`candidates/${id}/votes`] = currentVotes + 1;
                     await update(ref(db), updates);
                     
-                    // บันทึกสถานะว่าโหวตแล้วลงในอุปกรณ์
                     localStorage.setItem(`voted_${electionName}`, 'true');
                     
                     document.body.innerHTML = `
