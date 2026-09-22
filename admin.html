@@ -3,64 +3,243 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - ตั้งค่าการเลือกตั้ง</title>
+    <title>Admin - ตั้งค่าและจัดการการเลือกตั้ง</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 p-8">
-    <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
-        <h1 class="text-2xl font-bold mb-4">ตั้งค่าระบบการเลือกตั้ง</h1>
+<body class="bg-gray-100 p-4 md:p-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-xl shadow-lg">
+        <h1 class="text-3xl font-bold mb-6 text-gray-800 border-b pb-4">⚙️ จัดการระบบการเลือกตั้ง</h1>
         
-        <!-- ตั้งค่าเงื่อนไข -->
-        <h2 class="text-xl font-semibold mb-2 mt-4">1. ข้อมูลการเลือกตั้งและพื้นที่</h2>
-        <div class="grid grid-cols-2 gap-4 mb-6">
-            <input id="elName" type="text" placeholder="ชื่อการเลือกตั้ง" class="border p-2 rounded">
-            <input id="elRadius" type="number" placeholder="รัศมีที่อนุญาต (เมตร)" class="border p-2 rounded">
-            <input id="elLat" type="number" placeholder="ละติจูด (Latitude)" class="border p-2 rounded">
-            <input id="elLng" type="number" placeholder="ลองจิจูด (Longitude)" class="border p-2 rounded">
-            <input id="elStart" type="datetime-local" class="border p-2 rounded">
-            <input id="elEnd" type="datetime-local" class="border p-2 rounded">
+        <!-- ส่วนที่ 1: ตั้งค่าเงื่อนไข -->
+        <h2 class="text-xl font-semibold mb-4 text-blue-600">1. ข้อมูลการเลือกตั้งและพื้นที่</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">ชื่อการเลือกตั้ง</label>
+                <input id="elName" type="text" placeholder="เช่น เลือกตั้งประธานนักเรียน" class="w-full border p-2 rounded focus:ring focus:ring-blue-200 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">รัศมีที่อนุญาต (เมตร)</label>
+                <input id="elRadius" type="number" placeholder="เช่น 500" class="w-full border p-2 rounded focus:ring focus:ring-blue-200 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">ละติจูด (Latitude)</label>
+                <input id="elLat" type="number" step="any" placeholder="เช่น 13.7563" class="w-full border p-2 rounded focus:ring focus:ring-blue-200 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">ลองจิจูด (Longitude)</label>
+                <input id="elLng" type="number" step="any" placeholder="เช่น 100.5018" class="w-full border p-2 rounded focus:ring focus:ring-blue-200 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">เวลาเริ่มลงคะแนน</label>
+                <input id="elStart" type="datetime-local" class="w-full border p-2 rounded focus:ring focus:ring-blue-200 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">เวลาสิ้นสุดการลงคะแนน</label>
+                <input id="elEnd" type="datetime-local" class="w-full border p-2 rounded focus:ring focus:ring-blue-200 outline-none">
+            </div>
         </div>
-        <button id="saveConfig" class="bg-blue-600 text-white px-4 py-2 rounded">บันทึกการตั้งค่า</button>
+        <button id="saveConfig" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition shadow">💾 บันทึกการตั้งค่า</button>
 
-        <!-- เพิ่มผู้สมัคร -->
-        <h2 class="text-xl font-semibold mb-2 mt-8">2. เพิ่มผู้สมัคร</h2>
-        <div class="grid grid-cols-2 gap-4 mb-4">
-            <input id="cName" type="text" placeholder="ชื่อผู้สมัคร" class="border p-2 rounded">
-            <input id="cPhoto" type="url" placeholder="URL รูปถ่าย" class="border p-2 rounded">
-            <textarea id="cDetails" placeholder="รายละเอียด/นโยบาย" class="border p-2 rounded col-span-2"></textarea>
+        <!-- เส้นคั่น -->
+        <hr class="my-8">
+
+        <!-- ส่วนที่ 2: ฟอร์มเพิ่ม/แก้ไข ผู้สมัคร -->
+        <h2 id="formTitle" class="text-xl font-semibold mb-4 text-green-600">2. เพิ่มผู้สมัครใหม่</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 bg-gray-50 p-4 rounded border">
+            <!-- ซ่อน ID ไว้ใช้สำหรับอ้างอิงตอนแก้ไข -->
+            <input id="cId" type="hidden">
+            
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">ชื่อ-นามสกุล ผู้สมัคร</label>
+                <input id="cName" type="text" placeholder="ระบุชื่อผู้สมัคร" class="w-full border p-2 rounded focus:ring focus:ring-green-200 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">URL รูปถ่าย</label>
+                <input id="cPhoto" type="url" placeholder="ลิงก์รูปภาพ (http://...)" class="w-full border p-2 rounded focus:ring focus:ring-green-200 outline-none">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm text-gray-600 mb-1">รายละเอียด/นโยบาย</label>
+                <textarea id="cDetails" placeholder="นโยบายหรือประวัติโดยย่อ" rows="3" class="w-full border p-2 rounded focus:ring focus:ring-green-200 outline-none"></textarea>
+            </div>
         </div>
-        <button id="addCandidate" class="bg-green-600 text-white px-4 py-2 rounded">เพิ่มผู้สมัคร</button>
+        <div class="flex gap-2">
+            <button id="saveCandidateBtn" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition shadow">➕ เพิ่มผู้สมัคร</button>
+            <button id="cancelEditBtn" class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 transition shadow hidden">❌ ยกเลิกการแก้ไข</button>
+        </div>
+
+        <!-- เส้นคั่น -->
+        <hr class="my-8">
+
+        <!-- ส่วนที่ 3: ตารางแสดงรายชื่อผู้สมัคร -->
+        <h2 class="text-xl font-semibold mb-4 text-gray-700">3. รายชื่อผู้สมัครปัจจุบัน</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse bg-white rounded-lg overflow-hidden shadow-sm border border-gray-200">
+                <thead class="bg-gray-100 text-gray-700">
+                    <tr>
+                        <th class="p-3 border-b text-center">รูป</th>
+                        <th class="p-3 border-b text-left">ชื่อผู้สมัคร</th>
+                        <th class="p-3 border-b text-center">หมายเลข</th>
+                        <th class="p-3 border-b text-center">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="candidatesListTable">
+                    <!-- ข้อมูลจะถูกโหลดมาแสดงที่นี่ -->
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script type="module">
         import { db } from './firebase-config.js';
-        import { ref, set, push } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+        import { ref, set, push, get, update, remove, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-        document.getElementById('saveConfig').onclick = () => {
-            set(ref(db, 'settings'), {
+        // ตัวแปรเก็บข้อมูลผู้สมัครชั่วคราวเพื่อใช้ตอนกดแก้ไข
+        let currentCandidates = {};
+
+        // 1. โหลดข้อมูลการตั้งค่าเดิมมาแสดงอัตโนมัติ
+        onValue(ref(db, 'settings'), (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                document.getElementById('elName').value = data.name || '';
+                document.getElementById('elRadius').value = data.radius || '';
+                document.getElementById('elLat').value = data.lat || '';
+                document.getElementById('elLng').value = data.lng || '';
+                document.getElementById('elStart').value = data.start || '';
+                document.getElementById('elEnd').value = data.end || '';
+            }
+        });
+
+        // 2. บันทึกการตั้งค่า
+        document.getElementById('saveConfig').onclick = async () => {
+            await set(ref(db, 'settings'), {
                 name: document.getElementById('elName').value,
                 radius: Number(document.getElementById('elRadius').value),
                 lat: Number(document.getElementById('elLat').value),
                 lng: Number(document.getElementById('elLng').value),
                 start: document.getElementById('elStart').value,
                 end: document.getElementById('elEnd').value
-            }).then(() => alert('บันทึกการตั้งค่าแล้ว'));
+            });
+            alert('บันทึกการตั้งค่าระบบเรียบร้อยแล้ว');
         };
 
-        document.getElementById('addCandidate').onclick = () => {
-            const candidatesRef = ref(db, 'candidates');
-            const newCandidateRef = push(candidatesRef);
-            set(newCandidateRef, {
-                name: document.getElementById('cName').value,
-                photo: document.getElementById('cPhoto').value,
-                details: document.getElementById('cDetails').value,
-                number: 0, // จะถูกสุ่มทีหลัง
-                votes: 0
-            }).then(() => {
-                alert('เพิ่มผู้สมัครสำเร็จ');
-                document.getElementById('cName').value = '';
-                document.getElementById('cDetails').value = '';
-            });
+        // 3. โหลดและแสดงรายชื่อผู้สมัครแบบ Real-time
+        onValue(ref(db, 'candidates'), (snapshot) => {
+            const tableBody = document.getElementById('candidatesListTable');
+            tableBody.innerHTML = '';
+            
+            if (snapshot.exists()) {
+                currentCandidates = snapshot.val();
+                
+                // แปลงเป็น Array เพื่อเรียงลำดับตามหมายเลข
+                let candsArray = Object.keys(currentCandidates).map(key => ({ id: key, ...currentCandidates[key] }));
+                candsArray.sort((a, b) => (a.number || 0) - (b.number || 0));
+
+                candsArray.forEach(c => {
+                    tableBody.innerHTML += `
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="p-3 border-b text-center">
+                                <img src="${c.photo || 'https://via.placeholder.com/50'}" class="w-12 h-12 rounded-full object-cover mx-auto shadow-sm">
+                            </td>
+                            <td class="p-3 border-b font-semibold text-gray-800">${c.name}</td>
+                            <td class="p-3 border-b text-center text-blue-600 font-bold text-xl">${c.number || '-'}</td>
+                            <td class="p-3 border-b text-center space-x-2">
+                                <button onclick="triggerEdit('${c.id}')" class="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600 shadow-sm">แก้ไข</button>
+                                <button onclick="triggerDelete('${c.id}', '${c.name}')" class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 shadow-sm">ลบ</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } else {
+                tableBody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-gray-400">ยังไม่มีข้อมูลผู้สมัคร</td></tr>`;
+            }
+        });
+
+        // ฟังก์ชันเมื่อกดปุ่ม "แก้ไข"
+        window.triggerEdit = (id) => {
+            const c = currentCandidates[id];
+            if (!c) return;
+
+            // นำข้อมูลไปใส่ในฟอร์ม
+            document.getElementById('cId').value = id;
+            document.getElementById('cName').value = c.name;
+            document.getElementById('cPhoto').value = c.photo;
+            document.getElementById('cDetails').value = c.details;
+
+            // เปลี่ยนหน้าตาฟอร์มให้เป็นโหมดแก้ไข
+            document.getElementById('formTitle').innerText = "✏️ แก้ไขข้อมูลผู้สมัคร";
+            document.getElementById('formTitle').className = "text-xl font-semibold mb-4 text-yellow-600";
+            
+            const saveBtn = document.getElementById('saveCandidateBtn');
+            saveBtn.innerText = "💾 บันทึกการแก้ไข";
+            saveBtn.className = "bg-yellow-500 text-white px-6 py-2 rounded hover:bg-yellow-600 transition shadow";
+            
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+
+            // เลื่อนหน้าจอขึ้นไปที่ฟอร์ม
+            window.scrollTo({ top: 400, behavior: 'smooth' });
+        };
+
+        // ฟังก์ชันสำหรับล้างฟอร์มกลับเป็นโหมด "เพิ่ม"
+        const resetForm = () => {
+            document.getElementById('cId').value = '';
+            document.getElementById('cName').value = '';
+            document.getElementById('cPhoto').value = '';
+            document.getElementById('cDetails').value = '';
+
+            document.getElementById('formTitle').innerText = "2. เพิ่มผู้สมัครใหม่";
+            document.getElementById('formTitle').className = "text-xl font-semibold mb-4 text-green-600";
+            
+            const saveBtn = document.getElementById('saveCandidateBtn');
+            saveBtn.innerText = "➕ เพิ่มผู้สมัคร";
+            saveBtn.className = "bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition shadow";
+            
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+        };
+
+        // เมื่อกดปุ่มยกเลิกการแก้ไข
+        document.getElementById('cancelEditBtn').onclick = resetForm;
+
+        // บันทึก/อัปเดต ผู้สมัคร
+        document.getElementById('saveCandidateBtn').onclick = async () => {
+            const id = document.getElementById('cId').value;
+            const name = document.getElementById('cName').value;
+            const photo = document.getElementById('cPhoto').value;
+            const details = document.getElementById('cDetails').value;
+
+            if (!name) {
+                alert("กรุณาระบุชื่อผู้สมัคร");
+                return;
+            }
+
+            if (id) {
+                // โหมด: แก้ไข
+                await update(ref(db, `candidates/${id}`), {
+                    name: name,
+                    photo: photo,
+                    details: details
+                });
+                alert('อัปเดตข้อมูลผู้สมัครสำเร็จ');
+            } else {
+                // โหมด: เพิ่มใหม่
+                const newCandidateRef = push(ref(db, 'candidates'));
+                await set(newCandidateRef, {
+                    name: name,
+                    photo: photo,
+                    details: details,
+                    number: 0,
+                    votes: 0
+                });
+                alert('เพิ่มผู้สมัครใหม่สำเร็จ');
+            }
+            resetForm();
+        };
+
+        // ฟังก์ชันเมื่อกดปุ่ม "ลบ"
+        window.triggerDelete = async (id, name) => {
+            if (confirm(`คุณต้องการลบข้อมูลของ "${name}" ใช่หรือไม่?\n(คะแนนโหวตทั้งหมดจะถูกลบไปด้วย)`)) {
+                await remove(ref(db, `candidates/${id}`));
+                alert('ลบข้อมูลเรียบร้อยแล้ว');
+            }
         };
     </script>
 </body>
